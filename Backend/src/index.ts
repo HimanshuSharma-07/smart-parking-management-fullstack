@@ -1,7 +1,11 @@
-import app from "./app";
-
-const PORT: number = 3000
-
-app.listen(PORT, () => {
-    console.log(`Server is listening at ${PORT}`)
+import dotenv from "dotenv"
+dotenv.config({
+    path: '.env'
 })
+
+import connectDB from "./db/index"
+
+
+
+connectDB()
+
