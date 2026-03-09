@@ -68,7 +68,7 @@ userSchema.methods.isPasswordCorrect = async function (password: string): Promis
 
 userSchema.methods.generateAccessToken = function (): string {
   return jwt.sign(
-    {
+    { 
       _id: this._id,
       email: this.email,
       role: this.role
