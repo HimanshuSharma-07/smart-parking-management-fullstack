@@ -15,3 +15,5 @@ class ApiResponse<T = any> {
         this.success = statusCode < 400  
     }
 }
+
+export {ApiResponse}
