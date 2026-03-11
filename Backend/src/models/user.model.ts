@@ -8,7 +8,7 @@ export interface IUser extends Document {
     fullName: string;
     email: string;
     password: string;
-    phone?: string;
+    phoneNo?: string;
     profileImg?: string;
     role: "user" | "admin";
     refreshToken?: string;
@@ -32,7 +32,7 @@ const userSchema = new Schema<IUser>  (
             lowercase: true,
             trim: true
         },
-        phone: {
+        phoneNo: {
             type: String,
             required: true
         },
@@ -42,7 +42,7 @@ const userSchema = new Schema<IUser>  (
         },
         profileImg: {
             type: String,
-            default: ""
+            
         },
         role: {
             type: String,
@@ -64,7 +64,7 @@ userSchema.pre("save", async function () {
 
 userSchema.methods.isPasswordCorrect = async function (password: string): Promise<boolean> {
     return await bcrypt.compare(password, this.password) 
-}; 
+};
 
 userSchema.methods.generateAccessToken = function (): string {
   return jwt.sign(
@@ -77,8 +77,8 @@ userSchema.methods.generateAccessToken = function (): string {
     {
       expiresIn: "1d",
     }
-  );
-};
+  )
+}
 
 userSchema.methods.generateRefreshToken = function(): string {
     return jwt.sign(
