@@ -93,7 +93,7 @@ const registerUser = asyncHandler ( async (req: Request, res: Response) => {
     
 
     return res.status(201).json(
-        new ApiResponse(200, createdUser, "User regesterd Successfully")
+        new ApiResponse(200, createdUser, "User registered  Successfully")
     )
     
 
@@ -103,10 +103,10 @@ const loginUser = asyncHandler ( async (req: Request, res: Response) => {
 
     const {email, password} = req.body
 
-    if (!email) {
-        throw new ApiError(400, "Email is requred")
+    if (!email || !password) {
+        throw new ApiError(400, "Email and password is requred")
     }
-
+    
      const user = await User.findOne({email})
 
      if (!user) {
@@ -275,7 +275,7 @@ const updateAccountDetails = asyncHandler ( async (req: Request, res: Response) 
     .json(new ApiResponse(200, user, "Account details updated Successfully"))
 })
 
-const updateUserProfieImg = asyncHandler ( async (req: Request, res: Response) => {
+const updateUserProfileImg = asyncHandler ( async (req: Request, res: Response) => {
     const profileImgLocalPath = req.file?.path
 
     if (!profileImgLocalPath) {
@@ -308,6 +308,7 @@ const updateUserProfieImg = asyncHandler ( async (req: Request, res: Response) =
 })
 
 
+
 export {
     registerUser,
     loginUser,
@@ -316,7 +317,6 @@ export {
     changeCurrentPassword,
     getCurrentUser,
     updateAccountDetails,
-    updateUserProfieImg,
-
+    updateUserProfileImg,
 
 }
