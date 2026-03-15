@@ -19,12 +19,13 @@ app.use(cookieParser())
 //routes import
 
 import userRouter from "./routes/user.routes"
-
+import parkingLotRouter from "./routes/parkingLot.routes"
 
 
 
 //routes declaration
 app.use("/api/v1/users", userRouter)
+app.use("/api/v1/parking-lots", parkingLotRouter)
 
 
 export default app
