@@ -6,17 +6,13 @@ import { uploadOnCloudinary } from "../utils/cloudinary"
 import { ParkingLots } from "../models/parkingLot.model"
 
 const createParkingLot = asyncHandler(async (req: Request, res: Response) => {
-    const { name, address, totalSlots } = req.body
+    const { lotName, address, totalSlots } = req.body
 
-    if ([name, address, totalSlots].some((field) => field === undefined || field === null || field === "")) {
+    if ([lotName, address, totalSlots].some((field) => field?.trim() === "")) {
         throw new ApiError(400, "All fields are required")
     }
 
-    const files = req.files as {
-        parkingLotImg?: Express.Multer.File[]
-    }
-
-    const parkingLotImgLocalPath = files?.parkingLotImg?.[0]?.path
+    const parkingLotImgLocalPath = req.file?.path
 
     if (!parkingLotImgLocalPath) {
         throw new ApiError(400, "Parking lot image is required")
@@ -29,15 +25,21 @@ const createParkingLot = asyncHandler(async (req: Request, res: Response) => {
     }
 
     const parkingLot = await ParkingLots.create({
-        name,
+        lotName,
         address,
-        image: uploadedParkingLotImg.url,
+        parkingLotImg: uploadedParkingLotImg.url,
         totalSlots,
     })
 
+    const createdparkingLot = await ParkingLots.findById(parkingLot._id)
+
+    if (!createdparkingLot) {
+        throw new ApiError(500, "Failed to create parking lot")
+    }
+
     return res
         .status(201)
-        .json(new ApiResponse(201, parkingLot, "Parking lot created successfully"))
+        .json(new ApiResponse(201, createdparkingLot, "Parking lot created successfully"))
 })
 
 const getAllParkingLots = asyncHandler(async (req: Request, res: Response) => {
@@ -62,46 +64,28 @@ const getParkingLotById = asyncHandler(async (req: Request, res: Response) => {
         .json(new ApiResponse(200, parkingLot, "Parking lot fetched successfully"))
 })
 
-const updateParkingLot = asyncHandler(async (req: Request, res: Response) => {
+const updateParkingLotDetails = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params
-    const { name, address, totalSlots } = req.body
+    const { lotName, address, totalSlots } = req.body
 
     const updatePayload: Partial<{
-        name: string
+        lotName: string
         address: string
         totalSlots: number
-        image: string
     }> = {}
 
-    if (name) updatePayload.name = name
+    if (lotName) updatePayload.lotName = lotName
     if (address) updatePayload.address = address
     if (totalSlots !== undefined) updatePayload.totalSlots = totalSlots
 
-    const files = req.files as {
-        image?: Express.Multer.File[]
-    }
-
-    const imageLocalPath = files?.image?.[0]?.path
-
-    if (imageLocalPath) {
-        const uploadedImage = await uploadOnCloudinary(imageLocalPath)
-
-        if (!uploadedImage?.url) {
-            throw new ApiError(500, "Failed to upload parking lot image")
-        }
-
-        updatePayload.image = uploadedImage.url
+    if (Object.keys(updatePayload).length === 0) {
+        throw new ApiError(400, "At least one field is required to update")
     }
 
     const updatedParkingLot = await ParkingLots.findByIdAndUpdate(
         id,
-        {
-            $set: updatePayload,
-        },
-        {
-            new: true,
-            runValidators: true,
-        }
+        { $set: updatePayload },
+        { new: true, runValidators: true }
     )
 
     if (!updatedParkingLot) {
@@ -110,7 +94,37 @@ const updateParkingLot = asyncHandler(async (req: Request, res: Response) => {
 
     return res
         .status(200)
-        .json(new ApiResponse(200, updatedParkingLot, "Parking lot updated successfully"))
+        .json(new ApiResponse(200, updatedParkingLot, "Parking lot details updated successfully"))
+})
+
+const updateParkingLotImage = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params
+
+    const parkingLotImgLocalPath = req.file?.path
+
+    if (!parkingLotImgLocalPath) {
+        throw new ApiError(400, "Parking lot image is required")
+    }
+
+    const uploadedImage = await uploadOnCloudinary(parkingLotImgLocalPath)
+
+    if (!uploadedImage?.url) {
+        throw new ApiError(500, "Failed to upload parking lot image")
+    }
+
+    const updatedParkingLot = await ParkingLots.findByIdAndUpdate(
+        id,
+        { $set: { parkingLotImg: uploadedImage.url } },
+        { new: true, runValidators: true }
+    )
+
+    if (!updatedParkingLot) {
+        throw new ApiError(404, "Parking lot not found")
+    }
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, updatedParkingLot, "Parking lot image updated successfully"))
 })
 
 const deleteParkingLot = asyncHandler(async (req: Request, res: Response) => {
@@ -132,6 +146,7 @@ export {
     createParkingLot,
     getAllParkingLots,
     getParkingLotById,
-    updateParkingLot,
+    updateParkingLotDetails,
+    updateParkingLotImage,
     deleteParkingLot,
 }

@@ -1,39 +1,26 @@
 import { Router } from "express"
-import { createParkingLot, getParkingLotById, updateParkingLot, getAllParkingLots, deleteParkingLot } from "../controllers/parkingLot.controller"
+import { createParkingLot, getParkingLotById, updateParkingLotDetails, updateParkingLotImage, getAllParkingLots, deleteParkingLot } from "../controllers/parkingLot.controller"
 import { verifyJWT } from "../middlewares/auth.middleware"
 import { upload } from "../middlewares/multer.middleware"
 
-
-
-
 const router = Router()
 
-
 router.route("/create-parking-lot").post(
-    verifyJWT, 
-    upload.fields([
-        {
-            name: "parkingLotImage",
-            maxCount: 1,
-        },
-    ]),
+    verifyJWT,
+    upload.single("parkingLotImg"),
     createParkingLot)
 
 router.route("/all-parking-lots").get(verifyJWT, getAllParkingLots)
 
-router.route("/parking-lot/:id").get(verifyJWT, getParkingLotById)
+router.route("/parking-lots/:id").get(verifyJWT, getParkingLotById)
 
+router.route("/parking-lots/:id/details").patch(verifyJWT, updateParkingLotDetails)
 
-router.route("/parking-lot/:id").patch(
-    verifyJWT, 
-
-    upload.fields([
-        {
-            name: "parkingLotImage",
-            maxCount: 1,
-        },
-    ]),
-    updateParkingLot)
+router.route("/parking-lots/:id/image").patch(
+    verifyJWT,
+    upload.single("parkingLotImg"),
+    updateParkingLotImage)
+    
 
 router.route("/delete-parking-lot/:id").delete(verifyJWT, deleteParkingLot)
 

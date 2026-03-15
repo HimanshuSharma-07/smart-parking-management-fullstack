@@ -1,15 +1,15 @@
 import {Schema, model, Document, Types} from "mongoose"
 
 export interface IParkingLot extends Document {
-        name: string,
+        lotName: string,
         address: string,
-        image: string,
+        parkingLotImg: string,
         totalSlots: number,
     }
 
 const parkingLotsSchema = new Schema<IParkingLot>(
     {
-        name: {
+        lotName: {
             type: String,
             required: true,
         },
@@ -17,7 +17,7 @@ const parkingLotsSchema = new Schema<IParkingLot>(
             type: String,
             required:true,
         },
-        image: {
+        parkingLotImg: {
             type: String,
             required:true,
         },
