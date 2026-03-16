@@ -34,7 +34,7 @@ const createParkingLot = asyncHandler(async (req: Request, res: Response) => {
     const createdparkingLot = await ParkingLots.findById(parkingLot._id)
 
     if (!createdparkingLot) {
-        throw new ApiError(500, "Failed to create parking lot")
+        throw new ApiError(500, "Failed to create Parking lot")
     }
 
     return res
@@ -47,7 +47,7 @@ const getAllParkingLots = asyncHandler(async (req: Request, res: Response) => {
 
     return res
         .status(200)
-        .json(new ApiResponse(200, parkingLots, "Parking lots fetched successfully"))
+        .json(new ApiResponse(200, parkingLots, "Parking lots fetched Successfully"))
 })
 
 const getParkingLotById = asyncHandler(async (req: Request, res: Response) => {
