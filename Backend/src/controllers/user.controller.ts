@@ -270,6 +270,10 @@ const updateAccountDetails = asyncHandler ( async (req: Request, res: Response) 
         {new: true}
     ).select("-password")
 
+    if (!user) {
+        throw new ApiError(404, "user not found")
+    }
+
     return res
     .status(200)
     .json(new ApiResponse(200, user, "Account details updated Successfully"))
