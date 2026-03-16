@@ -8,19 +8,18 @@ const router = Router()
 router.route("/create-parking-lot").post(
     verifyJWT,
     upload.single("parkingLotImg"),
-    createParkingLot)
+    createParkingLot
+)
 
 router.route("/all-parking-lots").get(verifyJWT, getAllParkingLots)
-
 router.route("/parking-lots/:id").get(verifyJWT, getParkingLotById)
-
 router.route("/parking-lots/:id/details").patch(verifyJWT, updateParkingLotDetails)
 
 router.route("/parking-lots/:id/image").patch(
     verifyJWT,
     upload.single("parkingLotImg"),
-    updateParkingLotImage)
-    
+    updateParkingLotImage
+)
 
 router.route("/delete-parking-lot/:id").delete(verifyJWT, deleteParkingLot)
 
