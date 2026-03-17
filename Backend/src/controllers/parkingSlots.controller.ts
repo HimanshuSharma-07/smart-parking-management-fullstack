@@ -7,11 +7,11 @@ import { Request, Response } from "express";
 
 const createParkingSlot = asyncHandler ( async (req: Request, res: Response) => {
 
+    const {lotId } = req.params
     const { slotNumber, floor, type, pricePerHour } = req.body
 
-    const { id } = req.params
 
-    const parkingLot = await ParkingLots.findById(id)
+    const parkingLot = await ParkingLots.findById(lotId)
 
     if (!parkingLot) {
         throw new ApiError(404, "Parking Lot not found")
@@ -27,7 +27,7 @@ const createParkingSlot = asyncHandler ( async (req: Request, res: Response) => 
 
     const existingSlot = await ParkingSlots.findOne({
         slotNumber,
-        lotId: id
+        lotId
     })
 
     if (existingSlot) {
@@ -40,7 +40,7 @@ const createParkingSlot = asyncHandler ( async (req: Request, res: Response) => 
         type,
         status: "available",
         pricePerHour,
-        lotId: id
+        lotId
     })
     
     return res
@@ -52,11 +52,10 @@ const createParkingSlot = asyncHandler ( async (req: Request, res: Response) => 
 
 const createBulkParkingSlots = asyncHandler(async (req: Request, res: Response) => {
 
-    const { id } = req.params
-
+    const { lotId } = req.params
     const { floors, slotsPerFloor, type, pricePerHour } = req.body
 
-    const parkingLot = await ParkingLots.findById(id)
+    const parkingLot = await ParkingLots.findById(lotId)
 
     if (!parkingLot) {
         throw new ApiError(404, "Parking lot not found")
@@ -68,22 +67,22 @@ const createBulkParkingSlots = asyncHandler(async (req: Request, res: Response) 
 
     if (floors <= 0 || slotsPerFloor <= 0) {
         throw new ApiError(400, "Floors and slotsPerFloor must be greater than 0")
-
     }
 
     if (pricePerHour && pricePerHour < 0) {
         throw new ApiError(400, "Price per hour must be positive")
     }
 
-    const existingSlots = await ParkingSlots.findOne({ lotId: id })
+    // Find last created floor
+    const lastSlot = await ParkingSlots
+        .findOne({ lotId })
+        .sort({ floor: -1 })
 
-    if (existingSlots) {
-        throw new ApiError(409, "Slots already exist for this parking lot")
-    }
+    const startFloor = lastSlot ? (lastSlot.floor as number) + 1 : 1
 
     const slots = []
 
-    for (let floor = 1; floor <= floors; floor++) {
+    for (let floor = startFloor; floor < startFloor + floors; floor++) {
         for (let slot = 1; slot <= slotsPerFloor; slot++) {
             slots.push({
                 slotNumber: `F${floor}-A${slot}`,
@@ -91,7 +90,7 @@ const createBulkParkingSlots = asyncHandler(async (req: Request, res: Response) 
                 type,
                 status: "available",
                 pricePerHour,
-                lotId: id
+                lotId
             })
         }
     }
@@ -102,19 +101,12 @@ const createBulkParkingSlots = asyncHandler(async (req: Request, res: Response) 
         new ApiResponse(201, createdSlots, "Parking slots created successfully")
     )
 })
-
 const getAllParkingSlots = asyncHandler( async (req: Request, res: Response) => {
     
-    const { id } = req.params
-
-    const parkingLot = await ParkingLots.findById(id)
-
-    if (!parkingLot) {
-        throw new ApiError(404, "Parking lot not found")
-    }
+    const { lotId } = req.params
 
     const parkingSlots = await ParkingSlots
-        .find({ lotId: id})
+        .find({ lotId })
         .sort({ createdAt: -1 })
 
     return res
@@ -126,15 +118,9 @@ const getAllParkingSlots = asyncHandler( async (req: Request, res: Response) => 
 
 const getParkingSlotById = asyncHandler( async (req: Request, res: Response) => {
     
-    const { lotId, slotId } = req.params
-
-    const parkingLot = await  ParkingLots.findById(lotId)
+    const { slotId } = req.params
 
     const parkingSlot = await ParkingSlots.findById(slotId)
-
-    if (!parkingLot) {
-        throw new ApiError(404, "Parking lot not found")
-    }
 
     if (!parkingSlot) {
         throw new ApiError(404, 'Parking slot not found')
@@ -149,28 +135,7 @@ const getParkingSlotById = asyncHandler( async (req: Request, res: Response) => 
 
 const getAvailableSlots = asyncHandler(async (req: Request, res: Response) => {
 
-    const { id } = req.params
-
-    const parkingLot = await ParkingLots.findById(id)
-
-    if (!parkingLot) {
-        throw new ApiError(404, "Parking lot not found")
-    }
-
-    const slots = await ParkingSlots.find({
-        lotId: id,
-        status: "available"
-    }).sort({ slotNumber : 1})
-
-    return res.status(200).json(
-        new ApiResponse(200, slots, "Available slots fetched")
-    )
-})
-
-const updateSlotStatus = asyncHandler(async (req: Request, res: Response) => {
-
-    const { lotId, slotId } = req.params
-    const { status } = req.body
+    const { lotId } = req.params
 
     const parkingLot = await ParkingLots.findById(lotId)
 
@@ -178,9 +143,20 @@ const updateSlotStatus = asyncHandler(async (req: Request, res: Response) => {
         throw new ApiError(404, "Parking lot not found")
     }
 
-    if (!status) {
-        throw new ApiError(400, "Status is required")
-    }
+    const parkingSlots = await ParkingSlots.find({
+        lotId,
+        status: "available"
+    }).sort({ slotNumber : 1})
+
+    return res.status(200).json(
+        new ApiResponse(200, parkingSlots, "Available slots fetched")
+    )
+})
+
+const updateSlotStatus = asyncHandler(async (req: Request, res: Response) => {
+
+    const { slotId } = req.params
+    const { status } = req.body
 
     const allowedStatus = ["available", "occupied", "reserved", "maintenance"]
 
@@ -201,18 +177,19 @@ const updateSlotStatus = asyncHandler(async (req: Request, res: Response) => {
     }
 
     const previousStatus = parkingSlot.status
+    
 
     parkingSlot.status = status
     await parkingSlot.save()
 
     if (previousStatus === "available" && status !== "available") {
-        await ParkingLots.findByIdAndUpdate(lotId, {
+        await ParkingLots.findByIdAndUpdate(parkingSlot.lotId, {
             $inc: { availableSlots: -1 }
         })
     }
 
     if (previousStatus !== "available" && status === "available") {
-        await ParkingLots.findByIdAndUpdate(lotId, {
+        await ParkingLots.findByIdAndUpdate(parkingSlot.lotId, {
             $inc: { availableSlots: 1 }
         })
     }
@@ -224,14 +201,8 @@ const updateSlotStatus = asyncHandler(async (req: Request, res: Response) => {
 
 const updateParkingSlotDetails = asyncHandler( async (req: Request, res: Response) => {
     
-    const { lotId, slotId } = req.params
+    const { slotId } = req.params
     const {slotNumber, floor, type, pricePerHour} = req.body
-
-    const parkingLot = await ParkingLots.findById(lotId)
-
-    if (!parkingLot) {
-        throw new ApiError(404, "Parking lot not found")
-    }
 
     if (!slotNumber && !floor && !type && !pricePerHour) {
         throw new ApiError(400, " At least one field is required to update")
@@ -264,13 +235,7 @@ const updateParkingSlotDetails = asyncHandler( async (req: Request, res: Respons
 
 const deleteParkingSlot = asyncHandler ( async (req: Request, res: Response) => {
     
-    const { lotId, slotId } = req.params
-
-    const parkingLot = ParkingLots.findById(lotId)
-
-    if (!parkingLot) {
-        throw new ApiError(404, "Parking lot not found")
-    }
+    const { slotId } = req.params
 
     const deletedParkingSlot = await ParkingSlots.findByIdAndDelete(slotId)
 
