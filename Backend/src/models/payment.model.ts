@@ -5,7 +5,10 @@ export interface IPayment extends Document{
     amount: number;
     paymentMethod: "card" | "upi" | "cash";
     paymentStatus: "pending" | "paid" | "failed";
+    razerpayOrderId: string;
+    razerpayPaymentId: string;
     paidAt?: Date;
+
 }
 
 const paymentSchema = new Schema<IPayment>( 
@@ -14,10 +17,11 @@ const paymentSchema = new Schema<IPayment>(
             type: Schema.Types.ObjectId,
             ref: "Booking",
             required: true,
+            unique: true,
             index: true,
         },
         amount: {
-            types: Number,
+            type: Number,
             required: true
         },
         paymentMethod: {
@@ -28,11 +32,18 @@ const paymentSchema = new Schema<IPayment>(
         paymentStatus: {
             type: String,
             enum: ["pending", "paid", "failed"],
-            default: "pending"
+            default: "pending",
+            index: true
+        },
+        razerpayOrderId:{
+            type: String
+        },
+        razerpayPaymentId: {
+            type: String,
         },
         paidAt: {
             type: Date
-        }
+        },
 
     }, {timestamps: true}
 );

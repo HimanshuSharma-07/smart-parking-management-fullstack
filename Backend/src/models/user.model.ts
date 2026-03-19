@@ -12,7 +12,7 @@ export interface IUser extends Document {
     profileImg?: string;
     role: "user" | "admin";
     refreshToken?: string;
-    isPasswordCorrect(password: string): Promise<boolean>;
+    isPasswordCorrect(password: string): boolean;
     generateAccessToken(): string;
     generateRefreshToken(): string;
 
@@ -62,7 +62,7 @@ userSchema.pre("save", async function () {
     this.password = await bcrypt.hash(this.password, 10);
 })
 
-userSchema.methods.isPasswordCorrect = async function (password: string): Promise<boolean> {
+userSchema.methods.isPasswordCorrect = async function (password: string) {
     return await bcrypt.compare(password, this.password) 
 };
 
