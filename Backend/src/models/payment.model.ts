@@ -3,7 +3,7 @@ import {Schema, model, Document, Types} from "mongoose"
 export interface IPayment extends Document{
     bookingId: Types.ObjectId
     amount: number;
-    paymentMethod: "card" | "upi" | "cash";
+    paymentMethod: "online" | "cash";
     paymentStatus: "pending" | "paid" | "failed";
     razerpayOrderId: string;
     razerpayPaymentId: string;
@@ -26,7 +26,7 @@ const paymentSchema = new Schema<IPayment>(
         },
         paymentMethod: {
             type: String,
-            enum: ["card", "upi", "cash"],
+            enum: [ "online", "cash"],
             required: true,
         },
         paymentStatus: {
