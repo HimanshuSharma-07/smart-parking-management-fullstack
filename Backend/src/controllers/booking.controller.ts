@@ -107,6 +107,8 @@ const compeleteBooking = asyncHandler(async (req: Request, res: Response) => {
     parkingSlot.status = "available"
     await parkingSlot.save()
 
+    
+
     return res.status(200).json(
         new ApiResponse(200, { hours, totalPrice }, "Booking completed successfully")
     )
