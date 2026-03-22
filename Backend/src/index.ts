@@ -4,7 +4,12 @@ dotenv.config({
 })
 import connectDB from "./db/index"
 import app from "./app"
+// import http from "http"
+// import { initSocket } from "./sockets/socket" 
 
+// const server = http.createServer(app)
+
+// initSocket(server)
 
 
 connectDB()

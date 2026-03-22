@@ -48,7 +48,6 @@ const createBooking = asyncHandler( async (req: Request, res: Response) => {
 
     parkingSlot.status = "reserved"
     await parkingSlot.save()
-
     return res
     .status(200)
     .json(
