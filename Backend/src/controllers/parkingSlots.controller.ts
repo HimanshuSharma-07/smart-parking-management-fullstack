@@ -4,10 +4,11 @@ import { ApiError } from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
 import { asyncHandler } from "../utils/asyncHandler";
 import { Request, Response } from "express";
+import { emitToLot, emitToAdmin } from "../sockets/socket";
 
 const createParkingSlot = asyncHandler ( async (req: Request, res: Response) => {
 
-    const {lotId } = req.params
+    const lotId = req.params.lotId as string
     const { slotNumber, floor, type, pricePerHour } = req.body
 
 
@@ -42,6 +43,14 @@ const createParkingSlot = asyncHandler ( async (req: Request, res: Response) => 
         pricePerHour,
         lotId
     })
+
+    // Increment aggregate counts in ParkingLot
+    await ParkingLots.findByIdAndUpdate(lotId, {
+        $inc: { totalSlots: 1, availableSlots: 1 }
+    })
+
+    // Real-time: notify users viewing this lot
+    emitToLot(lotId as string, "slot:created", { slot: createdParkingSlot, lotId })
     
     return res
     .status(201)
@@ -52,8 +61,8 @@ const createParkingSlot = asyncHandler ( async (req: Request, res: Response) => 
 
 const createBulkParkingSlots = asyncHandler(async (req: Request, res: Response) => {
 
-    const { lotId } = req.params
-    const { floors, slotsPerFloor, type, pricePerHour } = req.body
+    const lotId = req.params.lotId as string
+    const { floors, startFloor, slotsPerFloor, type, pricePerHour } = req.body
 
     const parkingLot = await ParkingLots.findById(lotId)
 
@@ -73,20 +82,20 @@ const createBulkParkingSlots = asyncHandler(async (req: Request, res: Response) 
         throw new ApiError(400, "Price per hour must be positive")
     }
 
-    // Find last created floor
-    const lastSlot = await ParkingSlots
-        .findOne({ lotId })
-        .sort({ floor: -1 })
-
-    const startFloor = lastSlot ? (lastSlot.floor as number) + 1 : 1
+    const sFloor = Number(startFloor) || 1
+    const nFloors = Number(floors)
+    const nSlotsPerFloor = Number(slotsPerFloor)
 
     const slots = []
 
-    for (let floor = startFloor; floor < startFloor + floors; floor++) {
-        for (let slot = 1; slot <= slotsPerFloor; slot++) {
+    for (let currentFloor = sFloor; currentFloor < sFloor + nFloors; currentFloor++) {
+        const existingSlotsOnFloor = await ParkingSlots.countDocuments({ lotId, floor: currentFloor })
+        
+        for (let sIndex = 1; sIndex <= nSlotsPerFloor; sIndex++) {
+            const slotNumberIndex = existingSlotsOnFloor + sIndex
             slots.push({
-                slotNumber: `F${floor}-A${slot}`,
-                floor,
+                slotNumber: `F${currentFloor}-S${slotNumberIndex}`,
+                floor: currentFloor,
                 type,
                 status: "available",
                 pricePerHour,
@@ -97,10 +106,19 @@ const createBulkParkingSlots = asyncHandler(async (req: Request, res: Response) 
 
     const createdSlots = await ParkingSlots.insertMany(slots)
 
+    // Increment aggregate counts in ParkingLot
+    await ParkingLots.findByIdAndUpdate(lotId, {
+        $inc: { totalSlots: createdSlots.length, availableSlots: createdSlots.length }
+    })
+
+    // Real-time: notify users viewing this lot
+    emitToLot(lotId as string, "slot:created", { slots: createdSlots, lotId, bulk: true })
+
     return res.status(201).json(
         new ApiResponse(201, createdSlots, "Parking slots created successfully")
     )
 })
+
 const getAllParkingSlots = asyncHandler( async (req: Request, res: Response) => {
     
     const { lotId } = req.params
@@ -194,6 +212,16 @@ const updateSlotStatus = asyncHandler(async (req: Request, res: Response) => {
         })
     }
 
+    // Real-time: push status change to lot room
+    const lotId = parkingSlot.lotId?.toString()
+    if (lotId) {
+        emitToLot(lotId, "slot:statusUpdate", {
+            slotId: parkingSlot._id.toString(),
+            status,
+            lotId,
+        })
+    }
+
     return res.status(200).json(
         new ApiResponse(200, parkingSlot, "Slot status updated successfully")
     )
@@ -225,6 +253,12 @@ const updateParkingSlotDetails = asyncHandler( async (req: Request, res: Respons
         throw new ApiError(404, "Parking slot not found")
     }
 
+    // Real-time: push detail update to lot room
+    const lotId = updatedParkingSlot.lotId?.toString()
+    if (lotId) {
+        emitToLot(lotId, "slot:updated", { slot: updatedParkingSlot, lotId })
+    }
+
     return res
     .status(200)
     .json(
@@ -241,6 +275,20 @@ const deleteParkingSlot = asyncHandler ( async (req: Request, res: Response) => 
 
     if (!deletedParkingSlot) {
         throw new ApiError(404, "Parking slot not found")
+    }
+
+    // Decrement aggregate counts in ParkingLot
+    const updateQuery: any = { $inc: { totalSlots: -1 } }
+    if (deletedParkingSlot.status === "available") {
+        updateQuery.$inc.availableSlots = -1
+    }
+
+    await ParkingLots.findByIdAndUpdate(deletedParkingSlot.lotId, updateQuery)
+
+    // Real-time: push deletion to lot room
+    const lotId = deletedParkingSlot.lotId?.toString()
+    if (lotId) {
+        emitToLot(lotId, "slot:deleted", { slotId, lotId })
     }
 
     return res

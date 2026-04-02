@@ -4,6 +4,7 @@ import { ApiError } from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
 import { asyncHandler } from "../utils/asyncHandler";
 import { Request, Response } from "express";
+import { emitToLot, emitToAdmin } from "../sockets/socket";
 
 
 
@@ -36,6 +37,17 @@ const vehicleEntry = asyncHandler(async (req: Request, res: Response) => {
 
     booking.bookingStatus = "active"
     await booking.save()
+
+    // Real-time: push slot update to lot room
+    const lotId = slot.lotId?.toString()
+    if (lotId) {
+        emitToLot(lotId, "slot:statusUpdate", {
+            slotId: slot._id.toString(),
+            status: "occupied",
+            lotId,
+        })
+    }
+    emitToAdmin("booking:updated", { bookingId, status: "active", lotId })
 
     return res.status(200).json(
         new ApiResponse(200, slot, "Vehicle entered parking")
@@ -80,6 +92,17 @@ const vehicleExit = asyncHandler(async (req: Request, res: Response) => {
 
     slot.status = "available"
     await slot.save()
+
+    // Real-time: push slot freed + booking completed to relevant rooms
+    const lotId = slot.lotId?.toString()
+    if (lotId) {
+        emitToLot(lotId, "slot:statusUpdate", {
+            slotId: slot._id.toString(),
+            status: "available",
+            lotId,
+        })
+    }
+    emitToAdmin("booking:completed", { bookingId, lotId, slotId: slot._id.toString() })
 
     return res.status(200).json(
         new ApiResponse(

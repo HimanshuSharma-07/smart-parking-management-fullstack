@@ -10,8 +10,8 @@ const router = Router()
 router.route("/register").post(
     upload.fields([
         {
-            name: "parkingLotImage",
-            maxCount : 1,
+            name: "profileImg",
+            maxCount: 1,
         },
     ]),
     registerUser

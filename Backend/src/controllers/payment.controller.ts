@@ -4,6 +4,7 @@ import { ApiError } from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
 import { asyncHandler } from "../utils/asyncHandler";
 import { Request, Response } from "express";
+import { emitToAdmin } from "../sockets/socket";
 
 
 
@@ -26,12 +27,14 @@ const createPayment = asyncHandler ( async (req: Request, res: Response) => {
 
     const payment = await Payment.create({
         bookingId,
-        
         paymentMethod,
         paymentStatus: paymentMethod === "cash" ? "paid" : "pending",
         paidAt: paymentMethod === "cash" ? new Date() : undefined
 
     })
+
+    // Real-time: notify admin of new payment
+    emitToAdmin("payment:created", { payment, bookingId })
 
     return res
     .status(201)
@@ -41,7 +44,7 @@ const createPayment = asyncHandler ( async (req: Request, res: Response) => {
 
 })
 
-const verifyPayment = asyncHandler( async (req: Request, res: Response) =>{
+const verifyPayment = asyncHandler( async (req: Request, res: Response) => {
 
     const { paymentId } = req.params
 
@@ -59,6 +62,9 @@ const verifyPayment = asyncHandler( async (req: Request, res: Response) =>{
     payment.paidAt = new Date()
 
     await payment.save()
+
+    // Real-time: notify admin payment is verified
+    emitToAdmin("payment:verified", { payment })
 
     return res
     .status(200)

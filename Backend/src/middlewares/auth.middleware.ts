@@ -15,8 +15,10 @@ export const verifyJWT = asyncHandler( async (req: AuthRequest, _: Response, nex
     req.cookies?.accessToken || 
     req.header("Authorization")?.replace("Bearer ", "")
 
+    console.log("verifyJWT - Token Present:", !!token);
+
     if (!token) {
-        throw new ApiError(401, "Unauthorized  request")
+        throw new ApiError(401, "Unauthorized request")
     }
 
     const decodedToken =  jwt.verify(
@@ -27,11 +29,21 @@ export const verifyJWT = asyncHandler( async (req: AuthRequest, _: Response, nex
     const user = await User.findById(decodedToken._id).select("-password -refreshToken")
 
     if (!user) {
+        console.log("verifyJWT - User not found for token id:", decodedToken._id);
         throw new ApiError(401, "Invalid Access Token")
     }
+
+    console.log("verifyJWT - User found:", user.email, "Role:", user.role);
 
     req.user = user
 
     next()
     
+})
+
+export const verifyAdmin = asyncHandler( async (req: AuthRequest, _: Response, next: NextFunction) => {
+    if (req.user?.role !== "admin") {
+        throw new ApiError(403, "Access denied. Admin only.");
+    }
+    next();
 })

@@ -18,7 +18,7 @@ const parkingSlotsSchema = new Schema<IParkingSlots>(
         },
         lotId: {
             type: Schema.Types.ObjectId,
-            ref: "ParkingLot",
+            ref: "ParkingLots",
             required: true,
             index: true
         },

@@ -4,21 +4,19 @@ dotenv.config({
 })
 import connectDB from "./db/index"
 import app from "./app"
-// import http from "http"
-// import { initSocket } from "./sockets/socket" 
+import http from "http"
+import { initSocket } from "./sockets/socket"
 
-// const server = http.createServer(app)
+const server = http.createServer(app)
 
-// initSocket(server)
-
+initSocket(server)
 
 connectDB()
 .then(() => {
-    app.listen(process.env.PORT || 4000, () => {
-        console.log(`⚙️   Server is listening at ${process.env.PORT}`)
+    server.listen(process.env.PORT || 4000, () => {
+        console.log(`⚙️   Server is listening at port ${process.env.PORT || 4000}`)
     })
 })
 .catch((err) => {
     console.log("MongoDB connection failed !!!", err)
 })
-

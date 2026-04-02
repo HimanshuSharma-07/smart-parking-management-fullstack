@@ -4,38 +4,80 @@ import { ApiError } from "../utils/ApiError"
 import { ApiResponse } from "../utils/ApiResponse"
 import { uploadOnCloudinary } from "../utils/cloudinary"
 import { ParkingLots } from "../models/parkingLot.model"
+import { ParkingSlots } from "../models/parkingSlots.model"
+import { emitToAdmin } from "../sockets/socket"
 
 const createParkingLot = asyncHandler(async (req: Request, res: Response) => {
-    const { lotName, address, totalSlots } = req.body
+    console.log("Create Lot Request Body:", req.body);
+    console.log("Create Lot Request File:", req.file);
+    const { lotName, address, totalFloors, slotsPerFloor } = req.body
 
-    if ([lotName, address, totalSlots].some((field) => field?.trim() === "")) {
+    if (!lotName || !address || !totalFloors || !slotsPerFloor) {
+        console.log("Validation failed: missing fields", { lotName, address, totalFloors, slotsPerFloor });
         throw new ApiError(400, "All fields are required")
     }
 
     const parkingLotImgLocalPath = req.file?.path
 
     if (!parkingLotImgLocalPath) {
+        console.log("Validation failed: missing file");
         throw new ApiError(400, "Parking lot image is required")
     }
 
+    console.log("Uploading to Cloudinary...");
     const uploadedParkingLotImg = await uploadOnCloudinary(parkingLotImgLocalPath)
 
     if (!uploadedParkingLotImg?.url) {
+        console.log("Cloudinary upload failed");
         throw new ApiError(500, "Failed to upload parking lot image")
     }
+
+    const tFloors = parseInt(totalFloors, 10);
+    const sPFloor = parseInt(slotsPerFloor, 10);
+
+    console.log("Calculating slots:", { tFloors, sPFloor, total: tFloors * sPFloor });
 
     const parkingLot = await ParkingLots.create({
         lotName,
         address,
         parkingLotImg: uploadedParkingLotImg.url,
-        totalSlots,
+        totalSlots: tFloors * sPFloor,
+        totalFloors: tFloors,
+        slotsPerFloor: sPFloor,
+        availableSlots: tFloors * sPFloor,
     })
+
+    console.log("Parking Lot created in DB:", parkingLot._id);
+
+    // Automatically create slots for the parking lot
+    const slots = []
+    const defaultPricePerHour = 50
+    const defaultType = "standard"
+
+    for (let floor = 1; floor <= tFloors; floor++) {
+        for (let slot = 1; slot <= sPFloor; slot++) {
+            slots.push({
+                slotNumber: `F${floor}-S${slot}`,
+                floor,
+                type: defaultType,
+                status: "available",
+                pricePerHour: defaultPricePerHour,
+                lotId: parkingLot._id
+            })
+        }
+    }
+
+    console.log(`Creating ${slots.length} slots for lot ${parkingLot._id}...`);
+    await ParkingSlots.insertMany(slots)
 
     const createdparkingLot = await ParkingLots.findById(parkingLot._id)
 
     if (!createdparkingLot) {
         throw new ApiError(500, "Failed to create Parking lot")
     }
+
+    // Real-time: broadcast to all connected clients
+    emitToAdmin("lot:created", { lot: createdparkingLot })
 
     return res
         .status(201)
@@ -66,17 +108,25 @@ const getParkingLotById = asyncHandler(async (req: Request, res: Response) => {
 
 const updateParkingLotDetails = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params
-    const { lotName, address, totalSlots } = req.body
+    const { lotName, address, totalFloors, slotsPerFloor } = req.body
 
-    const updatePayload: Partial<{
-        lotName: string
-        address: string
-        totalSlots: number
-    }> = {}
+    const updatePayload: any = {}
 
     if (lotName) updatePayload.lotName = lotName
     if (address) updatePayload.address = address
-    if (totalSlots !== undefined) updatePayload.totalSlots = totalSlots
+    if (totalFloors !== undefined) {
+        updatePayload.totalFloors = Number(totalFloors)
+    }
+    if (slotsPerFloor !== undefined) {
+        updatePayload.slotsPerFloor = Number(slotsPerFloor)
+    }
+
+    if (updatePayload.totalFloors !== undefined || updatePayload.slotsPerFloor !== undefined) {
+        const lot = await ParkingLots.findById(id);
+        const tf = updatePayload.totalFloors !== undefined ? updatePayload.totalFloors : lot?.totalFloors || 0;
+        const sf = updatePayload.slotsPerFloor !== undefined ? updatePayload.slotsPerFloor : lot?.slotsPerFloor || 0;
+        updatePayload.totalSlots = tf * sf;
+    }
 
     if (Object.keys(updatePayload).length === 0) {
         throw new ApiError(400, "At least one field is required to update")
@@ -91,6 +141,9 @@ const updateParkingLotDetails = asyncHandler(async (req: Request, res: Response)
     if (!updatedParkingLot) {
         throw new ApiError(404, "Parking lot not found")
     }
+
+    // Real-time: broadcast updated lot to admin and users
+    emitToAdmin("lot:updated", { lot: updatedParkingLot })
 
     return res
         .status(200)
@@ -122,6 +175,9 @@ const updateParkingLotImage = asyncHandler(async (req: Request, res: Response) =
         throw new ApiError(404, "Parking lot not found")
     }
 
+    // Real-time: broadcast updated lot
+    emitToAdmin("lot:updated", { lot: updatedParkingLot })
+
     return res
         .status(200)
         .json(new ApiResponse(200, updatedParkingLot, "Parking lot image updated successfully"))
@@ -135,6 +191,9 @@ const deleteParkingLot = asyncHandler(async (req: Request, res: Response) => {
     if (!deletedParkingLot) {
         throw new ApiError(404, "Parking lot not found")
     }
+
+    // Real-time: broadcast deletion
+    emitToAdmin("lot:deleted", { lotId: id })
 
     return res
         .status(200)

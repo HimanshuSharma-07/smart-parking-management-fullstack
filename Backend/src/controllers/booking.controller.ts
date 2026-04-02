@@ -5,6 +5,7 @@ import { ApiError } from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
 import { asyncHandler } from "../utils/asyncHandler";
 import { Request, Response } from "express";
+import { emitToAdmin, emitToLot, emitToUser } from "../sockets/socket";
 
 
 const createBooking = asyncHandler( async (req: Request, res: Response) => {
@@ -48,6 +49,18 @@ const createBooking = asyncHandler( async (req: Request, res: Response) => {
 
     parkingSlot.status = "reserved"
     await parkingSlot.save()
+
+    // Emit real-time events
+    const lotId = parkingSlot.lotId?.toString()
+    if (lotId) {
+        emitToLot(lotId, "slot:statusUpdate", {
+            slotId: parkingSlot._id.toString(),
+            status: "reserved",
+            lotId,
+        })
+    }
+    emitToAdmin("booking:new", { booking, slotId: parkingSlot._id.toString(), lotId })
+
     return res
     .status(200)
     .json(
@@ -60,7 +73,12 @@ const getUserBooking = asyncHandler( async (req: Request, res: Response) => {
 
     const userBookings = await Booking.find({
         userId: req.user?._id,
-    }).populate("slotId")
+    })
+        .populate({
+            path: "slotId",
+            populate: { path: "lotId", model: "ParkingLots" },
+        })
+        .sort({ createdAt: -1 })
 
     return res
     .status(200)
@@ -106,7 +124,26 @@ const compeleteBooking = asyncHandler(async (req: Request, res: Response) => {
     parkingSlot.status = "available"
     await parkingSlot.save()
 
+    // Emit real-time events
+    const lotId = parkingSlot.lotId?.toString()
+    if (lotId) {
+        emitToLot(lotId, "slot:statusUpdate", {
+            slotId: parkingSlot._id.toString(),
+            status: "available",
+            lotId,
+        })
+    }
+    emitToAdmin("booking:completed", { bookingId, lotId, slotId: parkingSlot._id.toString() })
     
+    // Notification for the user
+    if (userBooking.userId) {
+        emitToUser(userBooking.userId.toString(), "booking:updated", { 
+            bookingId, 
+            status: "completed",
+            lotId,
+            slotId: parkingSlot._id.toString()
+        })
+    }
 
     return res.status(200).json(
         new ApiResponse(200, { hours, totalPrice }, "Booking completed successfully")
@@ -130,8 +167,30 @@ const cancelBooking = asyncHandler( async (req: Request, res: Response) => {
         userBooking.slotId,
         {
             status: "available"
-        }
+        },
+        { new: true }
     )
+
+    // Emit real-time events
+    const lotId = updatedParkingSlot?.lotId?.toString()
+    if (lotId) {
+        emitToLot(lotId, "slot:statusUpdate", {
+            slotId: userBooking.slotId?.toString(),
+            status: "available",
+            lotId,
+        })
+    }
+    emitToAdmin("booking:cancelled", { bookingId, lotId, slotId: userBooking.slotId?.toString() })
+
+    // Notification for the user
+    if (userBooking.userId) {
+        emitToUser(userBooking.userId.toString(), "booking:updated", { 
+            bookingId, 
+            status: "cancelled",
+            lotId,
+            slotId: userBooking.slotId?.toString()
+        })
+    }
 
     return res
     .status(200)

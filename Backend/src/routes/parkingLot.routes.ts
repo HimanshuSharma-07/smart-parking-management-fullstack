@@ -12,6 +12,7 @@ router.route("/create-parking-lot").post(
 )
 
 router.route("/all-parking-lots").get(verifyJWT, getAllParkingLots)
+router.route("/test").get((req, res) => res.json({ message: "Parking lot route is ALIVE" }))
 router.route("/parking-lots/:id").get(verifyJWT, getParkingLotById)
 
 router.route("/parking-lots/:id/details").patch(verifyJWT, updateParkingLotDetails)

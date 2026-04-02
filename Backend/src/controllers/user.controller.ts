@@ -110,7 +110,7 @@ const loginUser = asyncHandler ( async (req: Request, res: Response) => {
      const user = await User.findOne({email})
 
      if (!user) {
-        throw new ApiError(404, "User does not exist")
+        throw new ApiError(401, "Invalid user credentials")
      }
 
      const isPasswordValid = await user.isPasswordCorrect(password)
@@ -253,19 +253,21 @@ const getCurrentUser = asyncHandler( async (req: Request, res: Response) => {
 })
 
 const updateAccountDetails = asyncHandler ( async (req: Request, res: Response) => {
-    const {fullName, email} =  req.body
+    const {fullName, email, phoneNo} =  req.body
 
-    if (!fullName && !email) {
-        throw new ApiError(400, "At least one  field is required to update")
+    if (!fullName && !email && !phoneNo) {
+        throw new ApiError(400, "At least one field is required to update")
     }
+
+    const updateFields: any = {}
+    if (fullName) updateFields.fullName = fullName
+    if (email) updateFields.email = email
+    if (phoneNo) updateFields.phoneNo = phoneNo
 
     const user = await User.findByIdAndUpdate(
         req.user?._id,
         {
-            $set: {
-                fullName,
-                email
-            }
+            $set: updateFields
         },
         {new: true}
     ).select("-password")
