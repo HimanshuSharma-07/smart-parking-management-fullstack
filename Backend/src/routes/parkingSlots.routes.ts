@@ -8,7 +8,8 @@ import {
     getAvailableSlots,
     updateSlotStatus,
     updateParkingSlotDetails,
-    deleteParkingSlot
+    deleteParkingSlot,
+    deleteFloorSlots
 } from "../controllers/parkingSlots.controller";
 
 const router = Router()
@@ -26,5 +27,6 @@ router.patch("/slots/:slotId/status", verifyJWT, updateSlotStatus)
 router.patch("/slots/:slotId", verifyJWT, updateParkingSlotDetails)
 
 router.delete("/slots/:slotId", verifyJWT, deleteParkingSlot)
+router.delete("/:lotId/floors/:floor", verifyJWT, deleteFloorSlots)
 
 export default router

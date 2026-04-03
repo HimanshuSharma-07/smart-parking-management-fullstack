@@ -1,6 +1,7 @@
 import { Booking } from "../models/bookig.model";
 import { ParkingLots } from "../models/parkingLot.model";
 import { ParkingSlots } from "../models/parkingSlots.model";
+import { Payment } from "../models/payment.model";
 import { ApiError } from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
 import { asyncHandler } from "../utils/asyncHandler";
@@ -43,8 +44,7 @@ const createBooking = asyncHandler( async (req: Request, res: Response) => {
         vehicleNumber,
         startTime,
         endTime,
-        bookingStatus: "active"
-        
+        bookingStatus: "reserved"
     })
 
     parkingSlot.status = "reserved"
@@ -64,7 +64,7 @@ const createBooking = asyncHandler( async (req: Request, res: Response) => {
     return res
     .status(200)
     .json(
-        new ApiResponse(201, booking, "Booking created Successfully")
+        new ApiResponse(201, booking, "Booking Reserved Successfully. Awaiting Vehicle Entry.")
     )
 
 })
@@ -97,6 +97,10 @@ const compeleteBooking = asyncHandler(async (req: Request, res: Response) => {
         throw new ApiError(404, "Booking not found")
     }
 
+    if (userBooking.bookingStatus === "completed") {
+        throw new ApiError(400, "Booking already completed")
+    }
+
     const parkingSlot = await ParkingSlots.findById(userBooking.slotId)
 
     if (!parkingSlot) {
@@ -104,25 +108,36 @@ const compeleteBooking = asyncHandler(async (req: Request, res: Response) => {
     }
 
     const endTime = new Date()
-
     
-    if (endTime < userBooking.startTime) {
-        throw new ApiError(400, "Booking has not started yet")
-    }
+    // Calculate duration from the moment they actually entered (startTime)
+    const { paymentMethod = "online" } = req.body
 
     const durationMs = endTime.getTime() - userBooking.startTime.getTime()
-
     const hours = Math.max(1, Math.ceil(durationMs / (1000 * 60 * 60)))
-
     const totalPrice = hours * (parkingSlot.pricePerHour || 0)
 
     userBooking.endTime = endTime
     userBooking.bookingStatus = "completed"
-
     await userBooking.save()
+
+    // Handle Payment recording for Cash
+    if (paymentMethod === "cash") {
+        await Payment.create({
+            bookingId: userBooking._id,
+            amount: totalPrice,
+            paymentMethod: "cash",
+            paymentStatus: "paid",
+            paidAt: new Date()
+        })
+    }
 
     parkingSlot.status = "available"
     await parkingSlot.save()
+
+    // Increment available slots in ParkingLot
+    await ParkingLots.findByIdAndUpdate(parkingSlot.lotId, {
+        $inc: { availableSlots: 1 }
+    })
 
     // Emit real-time events
     const lotId = parkingSlot.lotId?.toString()
@@ -134,6 +149,9 @@ const compeleteBooking = asyncHandler(async (req: Request, res: Response) => {
         })
     }
     emitToAdmin("booking:completed", { bookingId, lotId, slotId: parkingSlot._id.toString() })
+    if (paymentMethod === "cash") {
+        emitToAdmin("payment:created", { bookingId, amount: totalPrice, method: "cash" })
+    }
     
     // Notification for the user
     if (userBooking.userId) {
@@ -141,12 +159,56 @@ const compeleteBooking = asyncHandler(async (req: Request, res: Response) => {
             bookingId, 
             status: "completed",
             lotId,
-            slotId: parkingSlot._id.toString()
+            slotId: parkingSlot._id.toString(),
+            totalPrice,
+            paymentMethod
         })
     }
 
     return res.status(200).json(
-        new ApiResponse(200, { hours, totalPrice }, "Booking completed successfully")
+        new ApiResponse(200, { hours, totalPrice, paymentMethod }, "Vehicle Exit Processed. Booking completed successfully")
+    )
+})
+
+const markVehicleEntry = asyncHandler(async (req: Request, res: Response) => {
+    const { bookingId } = req.params
+
+    const booking = await Booking.findById(bookingId)
+    if (!booking) {
+        throw new ApiError(404, "Booking not found")
+    }
+
+    if (booking.bookingStatus !== "reserved") {
+        throw new ApiError(400, `Cannot mark entry for booking with status: ${booking.bookingStatus}`)
+    }
+
+    const parkingSlot = await ParkingSlots.findById(booking.slotId)
+    if (!parkingSlot) {
+        throw new ApiError(404, "Parking slot not found")
+    }
+
+    // Update booking status and actual start time
+    booking.bookingStatus = "active"
+    booking.startTime = new Date() 
+    await booking.save()
+
+    // Update slot status to occupied
+    parkingSlot.status = "occupied"
+    await parkingSlot.save()
+
+    // Real-time: push status change to lot room
+    const lotId = parkingSlot.lotId?.toString()
+    if (lotId) {
+        emitToLot(lotId, "slot:statusUpdate", {
+            slotId: parkingSlot._id.toString(),
+            status: "occupied",
+            lotId,
+        })
+    }
+    emitToAdmin("booking:entry", { bookingId, lotId, slotId: parkingSlot._id.toString() })
+
+    return res.status(200).json(
+        new ApiResponse(200, booking, "Vehicle Entry Marked successfully. Slot is now occupied.")
     )
 })
 
@@ -200,13 +262,38 @@ const cancelBooking = asyncHandler( async (req: Request, res: Response) => {
     
 })
 
-   
+const searchBookingByVehicle = asyncHandler(async (req: Request, res: Response) => {
+    const { vehicleNumber } = req.params;
 
+    if (!vehicleNumber) {
+        throw new ApiError(400, "Vehicle number is required");
+    }
+
+    // Find the most recent active or reserved booking for this vehicle
+    const booking = await Booking.findOne({
+        vehicleNumber: { $regex: new RegExp(`^${vehicleNumber}$`, "i") },
+        bookingStatus: { $in: ["active", "reserved"] }
+    })
+    .populate({
+        path: "slotId",
+        populate: { path: "lotId", model: "ParkingLots" }
+    })
+    .sort({ createdAt: -1 });
+
+    if (!booking) {
+        throw new ApiError(404, "No active or reserved booking found for this vehicle");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, booking, "Booking found")
+    );
+});
 
 export {
     createBooking,
     getUserBooking,
     compeleteBooking,
-    cancelBooking
-
+    cancelBooking,
+    markVehicleEntry,
+    searchBookingByVehicle
 }

@@ -1,5 +1,6 @@
 import { ParkingLots } from "../models/parkingLot.model";
 import { ParkingSlots } from "../models/parkingSlots.model";
+import { Booking } from "../models/bookig.model";
 import { ApiError } from "../utils/ApiError";
 import { ApiResponse } from "../utils/ApiResponse";
 import { asyncHandler } from "../utils/asyncHandler";
@@ -298,6 +299,54 @@ const deleteParkingSlot = asyncHandler ( async (req: Request, res: Response) => 
     )
 })
 
+const deleteFloorSlots = asyncHandler(async (req: Request, res: Response) => {
+    const lotId = req.params.lotId as string;
+    const floor = req.params.floor;
+    const floorNum = Number(floor);
+
+    const parkingLot = await ParkingLots.findById(lotId);
+    if (!parkingLot) {
+        throw new ApiError(404, "Parking lot not found");
+    }
+
+    // Identify all slots on this floor
+    const slotsOnFloor = await ParkingSlots.find({ lotId, floor: floorNum });
+    if (slotsOnFloor.length === 0) {
+        throw new ApiError(404, "No slots found on this floor");
+    }
+
+    const slotIds = slotsOnFloor.map(s => s._id);
+
+    // Safety Check: Check for active or reserved bookings on these slots
+    const activeBookingsCount = await Booking.countDocuments({
+        slotId: { $in: slotIds },
+        bookingStatus: { $in: ["active", "reserved"] }
+    });
+
+    if (activeBookingsCount > 0) {
+        throw new ApiError(400, "Cannot delete floor: active or reserved bookings exist on this floor.");
+    }
+
+    // Perform deletion
+    const availableSlotsOnFloor = slotsOnFloor.filter(s => s.status === "available").length;
+    await ParkingSlots.deleteMany({ _id: { $in: slotIds } });
+
+    // Update aggregate counts in ParkingLot
+    await ParkingLots.findByIdAndUpdate(lotId, {
+        $inc: { 
+            totalSlots: -slotsOnFloor.length, 
+            availableSlots: -availableSlotsOnFloor 
+        }
+    });
+
+    // Real-time: notify users
+    emitToLot(lotId, "slot:deleted", { floor: floorNum, lotId, bulk: true });
+
+    return res.status(200).json(
+        new ApiResponse(200, {}, `All ${slotsOnFloor.length} slots on Floor ${floorNum} deleted successfully`)
+    );
+});
+
 export {
     createParkingSlot,
     createBulkParkingSlots,
@@ -306,6 +355,6 @@ export {
     getAvailableSlots,
     updateSlotStatus,
     updateParkingSlotDetails,
-    deleteParkingSlot
-
+    deleteParkingSlot,
+    deleteFloorSlots
 }

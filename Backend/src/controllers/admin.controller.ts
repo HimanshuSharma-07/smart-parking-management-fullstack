@@ -120,7 +120,41 @@ const getAllBookings = asyncHandler(async (req: Request, res: Response) => {
 });
 
 const getAllPayments = asyncHandler(async (req: Request, res: Response) => {
-  const payments = await Payment.find({}).sort({ createdAt: -1 });
+  const payments = await Payment.aggregate([
+    {
+      $lookup: {
+        from: "bookings",
+        localField: "bookingId",
+        foreignField: "_id",
+        as: "booking"
+      }
+    },
+    { $unwind: "$booking" },
+    {
+      $lookup: {
+        from: "users",
+        localField: "booking.userId",
+        foreignField: "_id",
+        as: "user"
+      }
+    },
+    { $unwind: "$user" },
+    { $sort: { createdAt: -1 } },
+    {
+      $project: {
+        _id: 1,
+        amount: 1,
+        paymentMethod: 1,
+        paymentStatus: 1,
+        razerpayPaymentId: 1,
+        paidAt: 1,
+        createdAt: 1,
+        "user.fullName": 1,
+        "user.email": 1
+      }
+    }
+  ]);
+
   return res
     .status(200)
     .json(new ApiResponse(200, payments, "All payments fetched successfully"));
