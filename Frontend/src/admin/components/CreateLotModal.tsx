@@ -14,6 +14,7 @@ export default function CreateLotModal({ isOpen, onClose, onSuccess }: CreateLot
   const [address, setAddress] = useState('');
   const [totalFloors, setTotalFloors] = useState('');
   const [slotsPerFloor, setSlotsPerFloor] = useState('');
+  const [pricePerHour, setPricePerHour] = useState('50');
   const [image, setImage] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -22,7 +23,7 @@ export default function CreateLotModal({ isOpen, onClose, onSuccess }: CreateLot
     e.preventDefault();
     setError('');
     
-    if (!lotName || !address || !totalFloors || !slotsPerFloor || !image) {
+    if (!lotName || !address || !totalFloors || !slotsPerFloor || !pricePerHour || !image) {
       setError('All fields are required.');
       return;
     }
@@ -34,6 +35,7 @@ export default function CreateLotModal({ isOpen, onClose, onSuccess }: CreateLot
       formData.append('address', address);
       formData.append('totalFloors', totalFloors);
       formData.append('slotsPerFloor', slotsPerFloor);
+      formData.append('pricePerHour', pricePerHour);
       formData.append('parkingLotImg', image);
 
       await api.post('/parking-lots/create-parking-lot', formData);
@@ -141,6 +143,17 @@ export default function CreateLotModal({ isOpen, onClose, onSuccess }: CreateLot
                         placeholder="e.g. 50"
                       />
                     </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Price per Hour (₹)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={pricePerHour}
+                      onChange={(e) => setPricePerHour(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-gray-900"
+                      placeholder="e.g. 50"
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Parking Lot Image</label>

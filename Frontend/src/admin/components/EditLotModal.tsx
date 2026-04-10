@@ -15,6 +15,7 @@ export default function EditLotModal({ isOpen, onClose, onSuccess, lot }: EditLo
   const [address, setAddress] = useState('');
   const [totalFloors, setTotalFloors] = useState('');
   const [slotsPerFloor, setSlotsPerFloor] = useState('');
+  const [pricePerHour, setPricePerHour] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -24,6 +25,7 @@ export default function EditLotModal({ isOpen, onClose, onSuccess, lot }: EditLo
       setAddress(lot.address || '');
       setTotalFloors(lot.totalFloors?.toString() || '');
       setSlotsPerFloor(lot.slotsPerFloor?.toString() || '');
+      setPricePerHour(lot.pricePerHour?.toString() || '50');
     }
   }, [lot, isOpen]);
 
@@ -31,7 +33,7 @@ export default function EditLotModal({ isOpen, onClose, onSuccess, lot }: EditLo
     e.preventDefault();
     setError('');
     
-    if (!lotName || !address || !totalFloors || !slotsPerFloor) {
+    if (!lotName || !address || !totalFloors || !slotsPerFloor || !pricePerHour) {
       setError('All fields are required.');
       return;
     }
@@ -43,6 +45,7 @@ export default function EditLotModal({ isOpen, onClose, onSuccess, lot }: EditLo
         address,
         totalFloors: Number(totalFloors),
         slotsPerFloor: Number(slotsPerFloor),
+        pricePerHour: Number(pricePerHour),
       });
       
       onSuccess();
@@ -136,6 +139,16 @@ export default function EditLotModal({ isOpen, onClose, onSuccess, lot }: EditLo
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-gray-900"
                       />
                     </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Price per Hour (₹)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={pricePerHour}
+                      onChange={(e) => setPricePerHour(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-gray-900"
+                    />
                   </div>
 
                   <div className="mt-8 flex gap-3">

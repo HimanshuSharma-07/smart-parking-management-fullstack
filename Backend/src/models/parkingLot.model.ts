@@ -8,6 +8,7 @@ export interface IParkingLot extends Document {
         totalFloors: number,
         slotsPerFloor: number,
         availableSlots: number,
+        pricePerHour: number,
     }
 
 const parkingLotsSchema = new Schema<IParkingLot>(
@@ -40,6 +41,11 @@ const parkingLotsSchema = new Schema<IParkingLot>(
             type: Number,
             required: true,
             default: 0
+        },
+        pricePerHour: {
+            type: Number,
+            required: true,
+            default: 50
         }
     }, {timestamps: true}
 

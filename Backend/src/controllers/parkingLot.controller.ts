@@ -10,10 +10,10 @@ import { emitToAdmin } from "../sockets/socket"
 const createParkingLot = asyncHandler(async (req: Request, res: Response) => {
     console.log("Create Lot Request Body:", req.body);
     console.log("Create Lot Request File:", req.file);
-    const { lotName, address, totalFloors, slotsPerFloor } = req.body
+    const { lotName, address, totalFloors, slotsPerFloor, pricePerHour } = req.body
 
-    if (!lotName || !address || !totalFloors || !slotsPerFloor) {
-        console.log("Validation failed: missing fields", { lotName, address, totalFloors, slotsPerFloor });
+    if (!lotName || !address || !totalFloors || !slotsPerFloor || !pricePerHour) {
+        console.log("Validation failed: missing fields", { lotName, address, totalFloors, slotsPerFloor, pricePerHour });
         throw new ApiError(400, "All fields are required")
     }
 
@@ -45,13 +45,14 @@ const createParkingLot = asyncHandler(async (req: Request, res: Response) => {
         totalFloors: tFloors,
         slotsPerFloor: sPFloor,
         availableSlots: tFloors * sPFloor,
+        pricePerHour: Number(pricePerHour)
     })
 
     console.log("Parking Lot created in DB:", parkingLot._id);
 
     // Automatically create slots for the parking lot
     const slots = []
-    const defaultPricePerHour = 50
+    const hourlyPrice = Number(pricePerHour)
     const defaultType = "standard"
 
     for (let floor = 1; floor <= tFloors; floor++) {
@@ -61,7 +62,7 @@ const createParkingLot = asyncHandler(async (req: Request, res: Response) => {
                 floor,
                 type: defaultType,
                 status: "available",
-                pricePerHour: defaultPricePerHour,
+                pricePerHour: hourlyPrice,
                 lotId: parkingLot._id
             })
         }
@@ -108,7 +109,7 @@ const getParkingLotById = asyncHandler(async (req: Request, res: Response) => {
 
 const updateParkingLotDetails = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params
-    const { lotName, address, totalFloors, slotsPerFloor } = req.body
+    const { lotName, address, totalFloors, slotsPerFloor, pricePerHour } = req.body
 
     const updatePayload: any = {}
 
@@ -119,6 +120,9 @@ const updateParkingLotDetails = asyncHandler(async (req: Request, res: Response)
     }
     if (slotsPerFloor !== undefined) {
         updatePayload.slotsPerFloor = Number(slotsPerFloor)
+    }
+    if (pricePerHour !== undefined) {
+        updatePayload.pricePerHour = Number(pricePerHour)
     }
 
     if (updatePayload.totalFloors !== undefined || updatePayload.slotsPerFloor !== undefined) {
