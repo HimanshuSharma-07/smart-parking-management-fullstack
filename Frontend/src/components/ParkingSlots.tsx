@@ -718,48 +718,48 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
                 ) : (
                   selectedSpot && (
                     <>
-                      <div className="mb-6 p-6 bg-blue-50 border border-blue-100 rounded-2xl shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-xs font-bold text-blue-600 uppercase tracking-[0.2em]">Selected spot</h3>
+                      <div className="mb-6 p-6 bg-blue-50/60 border border-blue-100 border-l-[5px] border-l-blue-600 rounded-2xl">
+                        <div className="flex items-center justify-between mb-5">
+                          <h3 className="text-[11px] font-black text-blue-600 uppercase tracking-[0.25em]">Selected Spot</h3>
                           <button
                             type="button"
                             onClick={() => {
                               setSelectedSpot(null);
                               setBookingStep(1);
                             }}
-                            className="text-xs text-blue-700 font-bold hover:underline uppercase tracking-wider"
+                            className="text-[11px] text-blue-600 font-bold hover:underline uppercase tracking-[0.15em]"
                           >
                             Change Spot
                           </button>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                           <div>
-                            <span className="text-[10px] text-gray-400 uppercase tracking-widest font-black">Spot</span>
-                            <div className="font-bold text-gray-900 text-xl">{selectedSpot.label}</div>
+                            <span className="text-[10px] text-gray-500 uppercase tracking-widest font-black block mb-1">Spot</span>
+                            <div className="font-bold text-gray-900 text-2xl">{selectedSpot.label}</div>
                           </div>
                           <div>
-                            <span className="text-[10px] text-gray-400 uppercase tracking-widest font-black">Type</span>
-                            <div className="font-bold text-blue-700 capitalize text-xl">{selectedSpot.type ?? 'regular'}</div>
+                            <span className="text-[10px] text-gray-500 uppercase tracking-widest font-black block mb-1">Type</span>
+                            <div className="font-bold text-blue-600 capitalize text-2xl">{selectedSpot.type ?? 'Regular'}</div>
                           </div>
                           <div>
-                            <span className="text-[10px] text-gray-400 uppercase tracking-widest font-black">Floor</span>
-                            <div className="font-bold text-gray-900 text-xl">{selectedFloor}</div>
+                            <span className="text-[10px] text-gray-500 uppercase tracking-widest font-black block mb-1">Floor</span>
+                            <div className="font-bold text-gray-900 text-2xl">{selectedFloor}</div>
                           </div>
                           <div>
-                            <span className="text-[10px] text-gray-400 uppercase tracking-widest font-black">Rate</span>
-                            <div className="font-bold text-gray-900 text-xl">₹{selectedSpot.pricePerHour}<span className="text-xs text-gray-400 font-medium">/hr</span></div>
+                            <span className="text-[10px] text-gray-500 uppercase tracking-widest font-black block mb-1">Rate</span>
+                            <div className="font-bold text-gray-900 text-2xl">₹{selectedSpot.pricePerHour}<span className="text-sm text-gray-400 font-medium">/hr</span></div>
                           </div>
                         </div>
                       </div>
 
-                      <div className="p-6 md:p-8 bg-white border border-gray-200 rounded-2xl mb-4 shadow-sm">
+                      <div className="p-6 md:p-8 bg-white border border-dashed border-gray-300 rounded-2xl mb-4">
                         <h3 className="text-lg font-bold text-gray-900 mb-8 flex items-center gap-3">
-                          <div className="p-2 bg-gray-100 rounded-lg"><Car className="w-5 h-5 text-gray-900" /></div>
+                          <div className="p-2.5 bg-gray-100 rounded-xl"><Car className="w-5 h-5 text-gray-700" /></div>
                           Booking details
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                           <div>
-                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2.5">
                               Vehicle number <span className="text-red-500">*</span>
                             </label>
                             <input
@@ -770,7 +770,7 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
                                 if (errors.vehicleNumber) setErrors(prev => ({ ...prev, vehicleNumber: undefined }));
                               }}
                               placeholder="e.g. MH-01-AB-1234"
-                              className={`w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-gray-900 focus:ring-4 focus:ring-gray-900/5 transition-all text-lg font-bold ${
+                              className={`w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-gray-900 focus:ring-4 focus:ring-gray-900/5 transition-all text-base font-semibold text-gray-700 placeholder:text-gray-400 placeholder:font-normal ${
                                 errors.vehicleNumber ? 'border-red-400 bg-red-50' : ''
                               }`}
                             />
@@ -783,7 +783,7 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
                           </div>
 
                           <div>
-                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2.5">
                               Start time <span className="text-red-500">*</span>
                             </label>
                             <input
@@ -793,7 +793,7 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
                                 setStartTime(e.target.value);
                                 if (errors.startTime) setErrors(prev => ({ ...prev, startTime: undefined }));
                               }}
-                              className={`w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-gray-900 focus:ring-4 focus:ring-gray-900/5 transition-all text-lg font-bold ${
+                              className={`w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-gray-900 focus:ring-4 focus:ring-gray-900/5 transition-all text-base font-semibold text-gray-700 ${
                                 errors.startTime ? 'border-red-400 bg-red-50' : ''
                               }`}
                             />
@@ -806,7 +806,7 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
                           </div>
 
                           <div>
-                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2.5">
                               Duration (hours) <span className="text-red-500">*</span>
                             </label>
                             <input
@@ -818,7 +818,7 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
                               }}
                               min={1}
                               max={24}
-                              className={`w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-gray-900 focus:ring-4 focus:ring-gray-900/5 transition-all text-lg font-bold ${
+                              className={`w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-gray-900 focus:ring-4 focus:ring-gray-900/5 transition-all text-base font-semibold text-gray-700 ${
                                 errors.duration ? 'border-red-400 bg-red-50' : ''
                               }`}
                             />
@@ -831,9 +831,9 @@ const ParkingSlot: React.FC<ParkingSlotProps> = ({
                           </div>
 
                           <div className="flex flex-col justify-end">
-                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 text-right">Estimated Price</label>
-                            <div className="px-6 py-4 bg-gray-900 text-white rounded-2xl flex items-center justify-between shadow-xl shadow-gray-200">
-                              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Payable:</span>
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2.5 text-right">Estimated Price</label>
+                            <div className="px-6 py-4 bg-gray-900 text-white rounded-2xl flex items-center justify-between shadow-xl shadow-gray-900/10">
+                              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total Payable:</span>
                               <span className="text-3xl font-black">₹{calculateTotalPrice()}</span>
                             </div>
                           </div>

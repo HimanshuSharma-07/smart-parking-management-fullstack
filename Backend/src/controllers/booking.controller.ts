@@ -50,8 +50,15 @@ const createBooking = asyncHandler( async (req: Request, res: Response) => {
     parkingSlot.status = "reserved"
     await parkingSlot.save()
 
-    // Emit real-time events
+    // Decrement available slots in ParkingLot
     const lotId = parkingSlot.lotId?.toString()
+    if (lotId) {
+        await ParkingLots.findByIdAndUpdate(lotId, {
+            $inc: { availableSlots: -1 }
+        })
+    }
+
+    // Emit real-time events
     if (lotId) {
         emitToLot(lotId, "slot:statusUpdate", {
             slotId: parkingSlot._id.toString(),
@@ -233,8 +240,15 @@ const cancelBooking = asyncHandler( async (req: Request, res: Response) => {
         { new: true }
     )
 
-    // Emit real-time events
+    // Increment available slots in ParkingLot when a booking is cancelled
     const lotId = updatedParkingSlot?.lotId?.toString()
+    if (lotId) {
+        await ParkingLots.findByIdAndUpdate(lotId, {
+            $inc: { availableSlots: 1 }
+        })
+    }
+
+    // Emit real-time events
     if (lotId) {
         emitToLot(lotId, "slot:statusUpdate", {
             slotId: userBooking.slotId?.toString(),

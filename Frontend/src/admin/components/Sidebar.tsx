@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Grid, CalendarDays, CreditCard } from "lucide-react";
+import { LayoutDashboard, Grid, CalendarDays, CreditCard, Users } from "lucide-react";
 
 const Sidebar = () => {
   const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -31,6 +31,10 @@ const Sidebar = () => {
         <NavLink to="/admin/payments" className={linkClass}>
           <CreditCard className="w-5 h-5" />
           Payments
+        </NavLink>
+        <NavLink to="/admin/customers" className={linkClass}>
+          <Users className="w-5 h-5" />
+          Customer Records
         </NavLink>
       </nav>
     </div>

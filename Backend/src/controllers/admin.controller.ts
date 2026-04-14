@@ -22,10 +22,10 @@ const getDashboardStats = asyncHandler(async (req: Request, res: Response) => {
 
   const usersCount = await User.countDocuments({}); // All time users as per user request
 
-  // Active bookings could be "confirmed"
-  const activeBookings = await Booking.countDocuments({ 
+  // Active bookings = reserved + active (any slot currently in use)
+  const activeBookings = await Booking.countDocuments({
     ...dateFilter,
-    status: "confirmed" 
+    bookingStatus: { $in: ["active", "reserved"] }
   });
 
   const slotsCount = await ParkingSlots.countDocuments({}); // Slots are usually static, but we could filter by creation if needed.
@@ -102,7 +102,7 @@ const getAllBookings = asyncHandler(async (req: Request, res: Response) => {
         createdAt: 1,
         "user.fullName": 1,
         "user.email": 1,
-        "user.phone": 1,
+        "user.phoneNo": 1,
         "slot.slotNumber": 1,
         "slot.floor": 1,
         "lot.lotName": 1,
@@ -117,6 +117,93 @@ const getAllBookings = asyncHandler(async (req: Request, res: Response) => {
   return res
     .status(200)
     .json(new ApiResponse(200, bookings, "All bookings fetched successfully"));
+});
+
+const getAllCustomerRecords = asyncHandler(async (req: Request, res: Response) => {
+  const records = await Booking.aggregate([
+    {
+      $lookup: {
+        from: "users",
+        localField: "userId",
+        foreignField: "_id",
+        as: "user"
+      }
+    },
+    { $unwind: "$user" },
+    {
+      $lookup: {
+        from: "parkingslots",
+        localField: "slotId",
+        foreignField: "_id",
+        as: "slot"
+      }
+    },
+    { $unwind: "$slot" },
+    {
+      $lookup: {
+        from: "parkinglots",
+        localField: "slot.lotId",
+        foreignField: "_id",
+        as: "lot"
+      }
+    },
+    { $unwind: "$lot" },
+    {
+      $lookup: {
+        from: "payments",
+        localField: "_id",
+        foreignField: "bookingId",
+        as: "payment"
+      }
+    },
+    { $unwind: { path: "$payment", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        durationMs: {
+          $subtract: [
+            { $ifNull: ["$endTime", new Date()] },
+            "$startTime"
+          ]
+        }
+      }
+    },
+    {
+      $addFields: {
+        durationHours: {
+          $ceil: { $divide: ["$durationMs", 3600000] }
+        }
+      }
+    },
+    { $sort: { createdAt: -1 } },
+    {
+      $project: {
+        _id: 1,
+        vehicleNumber: 1,
+        startTime: 1,
+        endTime: 1,
+        bookingStatus: 1,
+        createdAt: 1,
+        durationHours: 1,
+        "user.fullName": 1,
+        "user.email": 1,
+        "user.phoneNo": 1,
+        "slot.slotNumber": 1,
+        "slot.floor": 1,
+        "slot.pricePerHour": 1,
+        "slot.type": 1,
+        "lot.lotName": 1,
+        "lot.address": 1,
+        "payment.amount": 1,
+        "payment.paymentMethod": 1,
+        "payment.paymentStatus": 1,
+        "payment.paidAt": 1,
+      }
+    }
+  ]);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, records, "Customer records fetched successfully"));
 });
 
 const getAllPayments = asyncHandler(async (req: Request, res: Response) => {
@@ -167,4 +254,4 @@ const getAllSlots = asyncHandler(async (req: Request, res: Response) => {
     .json(new ApiResponse(200, slots, "All slots fetched successfully"));
 });
 
-export { getDashboardStats, getAllBookings, getAllPayments, getAllSlots };
+export { getDashboardStats, getAllBookings, getAllCustomerRecords, getAllPayments, getAllSlots };

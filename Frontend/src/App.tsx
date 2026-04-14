@@ -20,6 +20,7 @@ import { Outlet } from "react-router-dom";
 import Dashboard from "./admin/pages/Dashboard";
 import Bookings from "./admin/pages/Booking";
 import Payments from "./admin/pages/Payments";
+import CustomerRecords from "./admin/pages/CustomerRecords";
 
 function App() {
   const dispatch = useAppDispatch();
@@ -115,6 +116,7 @@ function App() {
           <Route path="parking-lots" element={<ParkingLots />} />
           <Route path="bookings" element={<Bookings />} />
           <Route path="payments" element={<Payments />} />
+          <Route path="customers" element={<CustomerRecords />} />
         </Route>
 
       </Route>
